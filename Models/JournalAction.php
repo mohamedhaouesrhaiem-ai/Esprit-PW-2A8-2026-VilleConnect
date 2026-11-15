@@ -17,5 +17,9 @@ class JournalAction {
     public function getTypeAction() { return $this->type_action; }
     public function getDescription() { return $this->description; }
     public function getDateAction() { return $this->date_action; }
+
+    public function setAdminId($admin_id) { $this->admin_id = $admin_id; }
+    public function setTypeAction($type_action) { $this->type_action = $type_action; }
+    public function setDescription($description) { $this->description = $description; }
 }
 ?>

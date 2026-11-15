@@ -5,7 +5,7 @@ class Admin {
     private $niveau;
     private $date_nomination;
 
-    public function __construct($user_id, $niveau = 'moderateur') {
+    public function __construct($user_id, $niveau) {
         $this->user_id = $user_id;
         $this->niveau = $niveau;
     }
@@ -14,5 +14,8 @@ class Admin {
     public function getUserId() { return $this->user_id; }
     public function getNiveau() { return $this->niveau; }
     public function getDateNomination() { return $this->date_nomination; }
+
+    public function setUserId($user_id) { $this->user_id = $user_id; }
+    public function setNiveau($niveau) { $this->niveau = $niveau; }
 }
 ?>

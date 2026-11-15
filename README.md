@@ -28,7 +28,7 @@ VilleConnect is an intelligent platform for urban services. This repository cont
 - **Mohamed Houas Rhaiem** - *Events Module*
 - **Adem Touati** - *Reports Module*
 - **Ela Beitah** - *Administration, Moderation & Statistics Module*
-- - **ines missaoui** - *Carpooling / Trajets Module*
+- **ines missaoui** - *Carpooling / Trajets Module*
 
 ## Academic Context
 Developed at **Esprit School of Engineering** - Tunisia (PW - 2A8 | 2026-2027)

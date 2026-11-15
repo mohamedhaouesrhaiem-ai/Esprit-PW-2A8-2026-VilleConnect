@@ -29,6 +29,7 @@ VilleConnect is an intelligent platform for urban services. This repository cont
 - **Adem Touati** - *Reports Module*
 - **Ela Beitah** - *Administration, Moderation & Statistics Module*
 - **ines missaoui** - *Carpooling / Trajets Module*
+- **Eya Ben Said** - *Commerces & offres locales*
 
 ## Academic Context
 Developed at **Esprit School of Engineering** - Tunisia (PW - 2A8 | 2026-2027)

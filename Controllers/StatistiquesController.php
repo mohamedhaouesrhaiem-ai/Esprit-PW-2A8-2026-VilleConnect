@@ -7,8 +7,8 @@ class StatistiquesController extends Controller {
     protected $title = 'Statistiques | VilleConnect Admin';
 
     public function index() {
-        $stats = (new AdminC())->getStatistiques();
-        $this->render('statistiques', ['stats' => $stats]);
+        $adminC = new AdminC();
+        $this->render('statistiques', ['stats' => $adminC->getStatistiques()]);
     }
 }
 ?>

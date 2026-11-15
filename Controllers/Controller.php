@@ -1,11 +1,17 @@
 <?php
 require_once __DIR__ . '/../config.php';
+
+
 class Controller {
-    public function render($view, $data = []) {
-        extract($data);
-        ob_start();
-        require_once __DIR__ . '/../Views/back/' . $view . '.php';
-        $content = ob_get_clean();
+
+    protected $page = 'statistiques';
+
+    protected $title = 'VilleConnect Admin';
+
+    public function render($view, $data) {
+        $title = $this->title;
+        $currentPage = $this->page;
+        $viewFile = __DIR__ . '/../Views/back/pages/' . $view . '.php';
         require_once __DIR__ . '/../Views/back/layout.php';
     }
 }

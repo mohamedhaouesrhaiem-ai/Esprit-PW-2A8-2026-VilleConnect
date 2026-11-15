@@ -10,20 +10,28 @@ class AdminsController extends Controller {
     public function index() {
         $adminC = new AdminC();
 
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            if (isset($_POST['delete_id'])) {
-                $adminC->deleteAdmin($_POST['delete_id']);
-            } elseif (isset($_POST['user_id'])) {
-                $adminC->addAdmin(new Admin($_POST['user_id'], $_POST['niveau'] ?? 'moderateur'));
-            }
-            $this->redirect($this->page);
+   
+        if (isset($_POST['delete_id'])) {
+            $adminC->deleteAdmin($_POST['delete_id']);
+        }
+       
+        if (isset($_POST['user_id']) && isset($_POST['niveau'])) {
+            $admin = new Admin($_POST['user_id'], $_POST['niveau']);
+            $adminC->addAdmin($admin);
         }
 
-        $candidats = array_filter($adminC->getUtilisateurs(), function ($u) { return !$u['admin_id']; });
+   
+        $adminsIds = $adminC->getUserIdsAdmins();
+        $candidats = [];
+        foreach ($adminC->getUtilisateurs() as $u) {
+            if (!in_array($u['id'], $adminsIds)) {
+                $candidats[] = $u;
+            }
+        }
+
         $this->render('admins', [
             'admins' => $adminC->getAdmins(),
-            'candidats' => $candidats,
-            'adminCourant' => JournalActionC::ADMIN_COURANT,
+            'candidats' => $candidats
         ]);
     }
 }

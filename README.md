@@ -2,7 +2,7 @@
 
 ## Overview
 This project was developed as part of the Projet Web - 2nd Year Engineering Program at **Esprit School of Engineering** (Academic Year 2026-2027).
-VilleConnect is an intelligent platform for urban services. This repository contains the **Events & Participation Module** (Mohamed), the **Urban Reports Module** (Adem) ,the **Administration, Moderation & Statistics Module** (Ela) and **Carpooling Module **(ines).
+VilleConnect is an intelligent platform for urban services. This repository contains the **Events & Participation Module** (Mohamed), the **Urban Reports Module** (Adem) ,the **Administration, Moderation & Statistics Module** (Ela) and **Carpooling Module**(ines).
 
 ## Features
 - **Events**: View city events, register online (Front Office), manage events (Back Office).

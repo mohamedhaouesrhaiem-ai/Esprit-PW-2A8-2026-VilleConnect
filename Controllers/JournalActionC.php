@@ -2,43 +2,63 @@
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../Models/JournalAction.php';
 
+
+define('ADMIN_COURANT', 1);
+
 class JournalActionC {
-    // Admin connecté : pas encore de module d'authentification, on utilise l'admin n°1
-    const ADMIN_COURANT = 1;
 
     function addAction($action) {
+        $sql = "INSERT INTO JournalAction (admin_id, type_action, description)
+                VALUES (:admin_id, :type_action, :description)";
         $db = config::getConnexion();
         try {
-            $sql = "INSERT INTO JournalAction (admin_id, type_action, description) VALUES (?, ?, ?)";
-            $db->prepare($sql)->execute([$action->getAdminId(), $action->getTypeAction(), $action->getDescription()]);
-        } catch (Exception $e) { /* le journal ne doit pas bloquer l'action principale */ }
-    }
-
-    function log($type, $description) {
-        $this->addAction(new JournalAction(self::ADMIN_COURANT, $type, $description));
-    }
-
-    function getActions($type = '') {
-        $db = config::getConnexion();
-        try {
-            $sql = "SELECT j.*, u.nom AS admin_nom
-                    FROM JournalAction j
-                    JOIN Admin a ON j.admin_id = a.id
-                    JOIN Utilisateur u ON a.user_id = u.id";
-            $params = [];
-            if ($type !== '') { $sql .= " WHERE j.type_action = ?"; $params[] = $type; }
-            $sql .= " ORDER BY j.date_action DESC";
             $query = $db->prepare($sql);
-            $query->execute($params);
-            return $query->fetchAll();
-        } catch (Exception $e) { return []; }
+            $query->execute([
+                'admin_id' => $action->getAdminId(),
+                'type_action' => $action->getTypeAction(),
+                'description' => $action->getDescription()
+            ]);
+        } catch (Exception $e) {
+            echo 'Error: ' . $e->getMessage();
+        }
     }
 
-    function getTypes() {
+    function getActions() {
+        $sql = "SELECT * FROM JournalAction";
         $db = config::getConnexion();
         try {
-            return $db->query("SELECT DISTINCT type_action FROM JournalAction ORDER BY type_action")->fetchAll(PDO::FETCH_COLUMN);
-        } catch (Exception $e) { return []; }
+            $query = $db->prepare($sql);
+            $query->execute();
+            // les actions les plus récentes en premier
+            return array_reverse($query->fetchAll());
+        } catch (Exception $e) {
+            echo 'Error: ' . $e->getMessage();
+            return [];
+        }
+    }
+
+    function getActionsParType($type) {
+        $sql = "SELECT * FROM JournalAction WHERE type_action = :type";
+        $db = config::getConnexion();
+        try {
+            $query = $db->prepare($sql);
+            $query->execute(['type' => $type]);
+            return array_reverse($query->fetchAll());
+        } catch (Exception $e) {
+            echo 'Error: ' . $e->getMessage();
+            return [];
+        }
+    }
+
+  
+    function getTypes() {
+        $types = [];
+        foreach ($this->getActions() as $action) {
+            if (!in_array($action['type_action'], $types)) {
+                $types[] = $action['type_action'];
+            }
+        }
+        return $types;
     }
 }
 ?>

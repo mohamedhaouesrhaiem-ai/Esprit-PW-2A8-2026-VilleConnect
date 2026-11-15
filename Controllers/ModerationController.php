@@ -9,19 +9,20 @@ class ModerationController extends Controller {
     public function index() {
         $adminC = new AdminC();
 
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            if (isset($_POST['user_id'], $_POST['statut'])) {
-                $adminC->changerStatutUtilisateur($_POST['user_id'], $_POST['statut']);
-            } elseif (isset($_POST['delete_signalement'])) {
-                $adminC->supprimerSignalement($_POST['delete_signalement']);
-            }
-            $this->redirect($this->page);
+        
+        if (isset($_POST['user_id']) && isset($_POST['statut'])) {
+            $adminC->changerStatutUtilisateur($_POST['user_id'], $_POST['statut']);
+        }
+        if (isset($_POST['delete_signalement'])) {
+            $adminC->supprimerSignalement($_POST['delete_signalement']);
         }
 
         $this->render('moderation', [
             'utilisateurs' => $adminC->getUtilisateurs(),
-            'signalements' => $adminC->getSignalements(),
+            'adminsIds' => $adminC->getUserIdsAdmins(),
+            'signalements' => $adminC->getSignalements()
         ]);
     }
 }
 ?>
+

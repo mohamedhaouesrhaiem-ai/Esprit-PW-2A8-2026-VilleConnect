@@ -1,104 +1,225 @@
 <?php
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../Models/Admin.php';
+require_once __DIR__ . '/../Models/JournalAction.php';
 require_once __DIR__ . '/JournalActionC.php';
 
 class AdminC {
-    private $journal;
-
-    public function __construct() { $this->journal = new JournalActionC(); }
-
-   
-    function getAdmins() {
-        $db = config::getConnexion();
-        try {
-            $sql = "SELECT a.*, u.nom, u.email FROM Admin a JOIN Utilisateur u ON a.user_id = u.id ORDER BY a.id";
-            return $db->query($sql)->fetchAll();
-        } catch (Exception $e) { return []; }
-    }
-
-    function addAdmin($admin) {
-        $db = config::getConnexion();
-        try {
-            $db->prepare("INSERT INTO Admin (user_id, niveau) VALUES (?, ?)")
-               ->execute([$admin->getUserId(), $admin->getNiveau()]);
-            $this->journal->log('ajout_admin', "Utilisateur #" . $admin->getUserId() . " nommé " . $admin->getNiveau());
-            return true;
-        } catch (Exception $e) { return false; }
-    }
-
-    function deleteAdmin($id) {
-        $db = config::getConnexion();
-        if ((int)$id === JournalActionC::ADMIN_COURANT) { return false; } // on ne se retire pas soi-même
-        try {
-            $db->prepare("DELETE FROM Admin WHERE id = ?")->execute([$id]);
-            $this->journal->log('retrait_admin', "Admin #$id retiré");
-            return true;
-        } catch (Exception $e) { return false; }
-    }
 
 
     function getUtilisateurs() {
+        $sql = "SELECT * FROM Utilisateur";
         $db = config::getConnexion();
         try {
-            $sql = "SELECT u.*, a.id AS admin_id FROM Utilisateur u LEFT JOIN Admin a ON a.user_id = u.id ORDER BY u.id";
-            return $db->query($sql)->fetchAll();
-        } catch (Exception $e) { return []; }
+            $query = $db->prepare($sql);
+            $query->execute();
+            return $query->fetchAll();
+        } catch (Exception $e) {
+            echo 'Error: ' . $e->getMessage();
+            return [];
+        }
     }
+
+    function getUtilisateur($id) {
+        $sql = "SELECT * FROM Utilisateur WHERE id = :id";
+        $db = config::getConnexion();
+        try {
+            $query = $db->prepare($sql);
+            $query->execute(['id' => $id]);
+            return $query->fetch();
+        } catch (Exception $e) {
+            echo 'Error: ' . $e->getMessage();
+            return null;
+        }
+    }
+
+
+    function getAdmins() {
+        $sql = "SELECT * FROM Admin";
+        $db = config::getConnexion();
+        try {
+            $query = $db->prepare($sql);
+            $query->execute();
+            $admins = $query->fetchAll();
+        } catch (Exception $e) {
+            echo 'Error: ' . $e->getMessage();
+            return [];
+        }
+        // on ajoute le nom et l'email de l'utilisateur de chaque admin
+        foreach ($admins as $key => $admin) {
+            $user = $this->getUtilisateur($admin['user_id']);
+            $admins[$key]['nom'] = $user['nom'];
+            $admins[$key]['email'] = $user['email'];
+        }
+        return $admins;
+    }
+
+  
+    function getUserIdsAdmins() {
+        $ids = [];
+        foreach ($this->getAdmins() as $admin) {
+            $ids[] = $admin['user_id'];
+        }
+        return $ids;
+    }
+
+    function getNomAdmin($adminId) {
+        foreach ($this->getAdmins() as $admin) {
+            if ($admin['id'] == $adminId) {
+                return $admin['nom'];
+            }
+        }
+        return '';
+    }
+
+    function addAdmin($admin) {
+        $sql = "INSERT INTO Admin (user_id, niveau) VALUES (:user_id, :niveau)";
+        $db = config::getConnexion();
+        try {
+            $query = $db->prepare($sql);
+            $query->execute([
+                'user_id' => $admin->getUserId(),
+                'niveau' => $admin->getNiveau()
+            ]);
+            $this->journaliser('ajout_admin', 'Utilisateur #' . $admin->getUserId() . ' nommé ' . $admin->getNiveau());
+        } catch (Exception $e) {
+            echo 'Error: ' . $e->getMessage();
+        }
+    }
+
+    function deleteAdmin($id) {
+       
+        if ($id == ADMIN_COURANT) {
+            return;
+        }
+        $sql = "DELETE FROM Admin WHERE id = :id";
+        $db = config::getConnexion();
+        try {
+            $query = $db->prepare($sql);
+            $query->execute(['id' => $id]);
+            $this->journaliser('retrait_admin', 'Admin #' . $id . ' retiré');
+        } catch (Exception $e) {
+            echo 'Error: ' . $e->getMessage();
+        }
+    }
+
+  
 
     function changerStatutUtilisateur($id, $statut) {
-        if (!in_array($statut, ['actif', 'bloque'], true)) { return; }
+        if ($statut != 'actif' && $statut != 'bloque') {
+            return;
+        }
+        $sql = "UPDATE Utilisateur SET statut = :statut WHERE id = :id";
         $db = config::getConnexion();
         try {
-            $db->prepare("UPDATE Utilisateur SET statut = ? WHERE id = ?")->execute([$statut, $id]);
-            $this->journal->log($statut === 'bloque' ? 'blocage' : 'deblocage', "Utilisateur #$id : $statut");
-        } catch (Exception $e) { die('Erreur modération'); }
-    }
-
-    function supprimerSignalement($id) {
-        $db = config::getConnexion();
-        try {
-            $db->prepare("DELETE FROM Signalement WHERE id = ?")->execute([$id]);
-            $this->journal->log('suppression_signalement', "Signalement #$id supprimé (contenu inapproprié)");
-        } catch (Exception $e) { die('Erreur suppression'); }
+            $query = $db->prepare($sql);
+            $query->execute(['statut' => $statut, 'id' => $id]);
+            if ($statut == 'bloque') {
+                $this->journaliser('blocage', 'Utilisateur #' . $id . ' bloqué');
+            } else {
+                $this->journaliser('deblocage', 'Utilisateur #' . $id . ' débloqué');
+            }
+        } catch (Exception $e) {
+            echo 'Error: ' . $e->getMessage();
+        }
     }
 
     function getSignalements() {
-        $db = config::getConnexion();
-        try {
-            $sql = "SELECT s.id, s.titre, s.description, st.nom AS statut_nom
-                    FROM Signalement s JOIN Statut st ON s.statut_id = st.id ORDER BY s.id DESC";
-            return $db->query($sql)->fetchAll();
-        } catch (Exception $e) { return []; }
+        $signalements = $this->lister('Signalement');
+        $statuts = $this->lister('Statut');
+        
+        foreach ($signalements as $key => $s) {
+            $signalements[$key]['statut_nom'] = '';
+            foreach ($statuts as $st) {
+                if ($st['id'] == $s['statut_id']) {
+                    $signalements[$key]['statut_nom'] = $st['nom'];
+                }
+            }
+        }
+        return $signalements;
     }
 
- 
-    private function compter($sql) {
-        try { return (int) config::getConnexion()->query($sql)->fetchColumn(); }
-        catch (Exception $e) { return 0; }
+    function supprimerSignalement($id) {
+        $sql = "DELETE FROM Signalement WHERE id = :id";
+        $db = config::getConnexion();
+        try {
+            $query = $db->prepare($sql);
+            $query->execute(['id' => $id]);
+            $this->journaliser('suppression_signalement', 'Signalement #' . $id . ' supprimé (contenu inapproprié)');
+        } catch (Exception $e) {
+            echo 'Error: ' . $e->getMessage();
+        }
+    }
+
+
+    function lister($table) {
+        $sql = "SELECT * FROM " . $table;
+        $db = config::getConnexion();
+        try {
+            $query = $db->prepare($sql);
+            $query->execute();
+            return $query->fetchAll();
+        } catch (Exception $e) {
+            return [];
+        }
+    }
+
+
+    function repartition($tableGroupe, $colonne) {
+        $resultat = [];
+        $signalements = $this->lister('Signalement');
+        foreach ($this->lister($tableGroupe) as $groupe) {
+            $total = 0;
+            foreach ($signalements as $s) {
+                if ($s[$colonne] == $groupe['id']) {
+                    $total++;
+                }
+            }
+            $resultat[] = ['nom' => $groupe['nom'], 'total' => $total];
+        }
+
+     
+        $max = 0;
+        foreach ($resultat as $ligne) {
+            if ($ligne['total'] > $max) {
+                $max = $ligne['total'];
+            }
+        }
+        foreach ($resultat as $key => $ligne) {
+            if ($max > 0) {
+                $resultat[$key]['pourcentage'] = $ligne['total'] * 100 / $max;
+            } else {
+                $resultat[$key]['pourcentage'] = 0;
+            }
+        }
+        return $resultat;
     }
 
     function getStatistiques() {
-        $db = config::getConnexion();
-        $stats = [
-            'utilisateurs'  => $this->compter("SELECT COUNT(*) FROM Utilisateur"),
-            'bloques'       => $this->compter("SELECT COUNT(*) FROM Utilisateur WHERE statut = 'bloque'"),
-            'evenements'    => $this->compter("SELECT COUNT(*) FROM Evenement"),
-            'inscriptions'  => $this->compter("SELECT COUNT(*) FROM Inscription"),
-            'signalements'  => $this->compter("SELECT COUNT(*) FROM Signalement"),
-            'actions'       => $this->compter("SELECT COUNT(*) FROM JournalAction"),
-            'parStatut'     => [],
-            'parCategorie'  => [],
+        $bloques = 0;
+        foreach ($this->lister('Utilisateur') as $u) {
+            if ($u['statut'] == 'bloque') {
+                $bloques++;
+            }
+        }
+        return [
+            'utilisateurs' => count($this->lister('Utilisateur')),
+            'bloques'      => $bloques,
+            'evenements'   => count($this->lister('Evenement')),
+            'inscriptions' => count($this->lister('Inscription')),
+            'signalements' => count($this->lister('Signalement')),
+            'actions'      => count($this->lister('JournalAction')),
+            'parStatut'    => $this->repartition('Statut', 'statut_id'),
+            'parCategorie' => $this->repartition('CategorieSignalement', 'categorie_id'),
         ];
-        try {
-            $stats['parStatut'] = $db->query(
-                "SELECT st.nom, COUNT(s.id) AS total FROM Statut st
-                 LEFT JOIN Signalement s ON s.statut_id = st.id GROUP BY st.id, st.nom ORDER BY st.id")->fetchAll();
-            $stats['parCategorie'] = $db->query(
-                "SELECT c.nom, COUNT(s.id) AS total FROM CategorieSignalement c
-                 LEFT JOIN Signalement s ON s.categorie_id = c.id GROUP BY c.id, c.nom ORDER BY c.id")->fetchAll();
-        } catch (Exception $e) { }
-        return $stats;
+    }
+
+
+
+    function journaliser($type, $description) {
+        $journalC = new JournalActionC();
+        $journalC->addAction(new JournalAction(ADMIN_COURANT, $type, $description));
     }
 }
 ?>
+

@@ -1,5 +1,3 @@
--- Module Mobilité douce & trajets (Ines Missaoui)
-USE villeconnect;
 
 CREATE TABLE IF NOT EXISTS Utilisateur (
     id INT AUTO_INCREMENT PRIMARY KEY,
